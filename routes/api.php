@@ -13,10 +13,13 @@ Route::prefix('v1')->group(function () {
 
     // Clé d'API obligatoire, puis quota par clé.
     Route::middleware(['api.key', 'throttle:api-key'])->group(function () {
-        Route::get('/games', [GameController::class, 'index']);
+        // Endpoints les plus consultés : réponse en cache, par combinaison de paramètres.
+        Route::get('/games', [GameController::class, 'index'])
+            ->middleware('cache.stats:limit,page,sort,language');
         // Déclarée avant /games/{game}, sinon "search" serait pris pour un identifiant.
         Route::get('/games/search', GameSearchController::class);
         Route::get('/games/{game}', [GameController::class, 'show']);
-        Route::get('/games/{game}/top-streamers', TopStreamersController::class);
+        Route::get('/games/{game}/top-streamers', TopStreamersController::class)
+            ->middleware('cache.stats:limit,language');
     });
 });

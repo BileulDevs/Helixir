@@ -45,6 +45,8 @@ Pour ne garder que les vraies données, mets `SEED_DEMO_DATA=false` et repars d'
 
 ## Endpoints
 
+Documentation interactive (OpenAPI, générée par [Scramble](https://scramble.dedoc.co) depuis le code) : [localhost:8000/docs/api](http://localhost:8000/docs/api), avec un bouton pour tester chaque route. La spec brute est sur `/docs/api.json`.
+
 Toutes les routes sauf `/health` exigent `Authorization: Bearer <clé>`. Exemples prêts à l'emploi dans [`api.http`](api.http).
 
 | Méthode | Route | Description |
@@ -135,4 +137,4 @@ vendor/bin/pint       # style de code
 - Historique par jeu (24 h, 7 j, 30 j), jeux en tendance, score d'opportunité, comparaison de jeux
 - Redis pour le cache et files d'attente (un job par jeu) supervisées avec Horizon
 - Agrégats horaires et purge des snapshots bruts
-- Documentation OpenAPI générée, CI GitHub Actions
+- CI GitHub Actions (Pint, Larastan, tests)

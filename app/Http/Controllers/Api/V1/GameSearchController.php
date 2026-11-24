@@ -10,7 +10,11 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class GameSearchController extends Controller
 {
-    /** GET /api/v1/games/search?q= : recherche d'un jeu par nom, insensible à la casse. */
+    /**
+     * Recherche d'un jeu.
+     *
+     * Jeux dont le nom contient `q`, sans tenir compte de la casse (20 résultats au plus).
+     */
     public function __invoke(SearchGamesRequest $request): AnonymousResourceCollection
     {
         $games = Game::query()

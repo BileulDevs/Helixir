@@ -19,7 +19,9 @@ describe('GET /api/v1/games', function () {
     it('returns an empty list when nothing has been collected', function () {
         $this->getJson('/api/v1/games')
             ->assertOk()
-            ->assertExactJson(['data' => [], 'meta' => ['collected_at' => null]]);
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('meta.total', 0)
+            ->assertJsonPath('meta.collected_at', null);
     });
 
     it('lists games from the latest cycle sorted by viewers', function () {

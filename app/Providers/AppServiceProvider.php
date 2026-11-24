@@ -2,9 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\OpenApi\ApiErrorResponses;
 use App\Services\Twitch\TwitchClient;
+use Dedoc\Scramble\Configuration\OperationTransformers;
+use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -33,5 +38,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(config('helixir.api.rate_limit_per_minute'))
                 ->by($token !== null ? 'key:'.hash('sha256', $token) : "ip:{$request->ip()}");
         });
+
+        // Documentation OpenAPI (/docs/api) : erreurs au format de l'API, 401 sur les routes protégées.
+        Scramble::configure()->withOperationTransformers(
+            fn (OperationTransformers $transformers) => $transformers->append(ApiErrorResponses::class),
+        );
+
+        // La documentation d'une API publique est publique, y compris hors environnement local.
+        Gate::define('viewApiDocs', fn (?User $user = null) => true);
     }
 }
