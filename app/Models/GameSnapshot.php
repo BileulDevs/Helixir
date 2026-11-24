@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GameSnapshot extends Model
 {
@@ -33,6 +34,18 @@ class GameSnapshot extends Model
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class);
+    }
+
+    /** @return HasMany<GameLanguageStat, $this> */
+    public function languageStats(): HasMany
+    {
+        return $this->hasMany(GameLanguageStat::class);
+    }
+
+    /** @return HasMany<StreamSnapshot, $this> */
+    public function streams(): HasMany
+    {
+        return $this->hasMany(StreamSnapshot::class);
     }
 
     /** Moyenne de spectateurs par stream, arrondie (0 si aucun stream). */

@@ -6,8 +6,14 @@ if [ ! -f vendor/autoload.php ]; then
     composer install --no-interaction --prefer-dist
 fi
 
-# Applique les migrations et charge les données de démo (idempotent).
-php artisan migrate --force
-php artisan db:seed --force
+# Un seul conteneur (app) applique les migrations, pour éviter deux migrations concurrentes.
+if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+    php artisan migrate --force
+
+    # Données de démo pour tester sans clé Twitch (idempotent).
+    if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
+        php artisan db:seed --force
+    fi
+fi
 
 exec "$@"

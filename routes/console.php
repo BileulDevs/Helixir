@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Un snapshot toutes les 5 minutes. Le verrou empêche deux cycles de se chevaucher
+// (il expire au bout de 10 minutes si un cycle plante sans le libérer).
+Schedule::command('helixir:collect')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(10);
