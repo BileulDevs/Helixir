@@ -15,6 +15,9 @@ return [
     'api' => [
         // Requêtes autorisées par minute et par clé d'API.
         'rate_limit_per_minute' => (int) env('HELIXIR_RATE_LIMIT', 60),
+
+        // Durée de cache des réponses de /games et /top-streamers.
+        'cache_ttl_seconds' => (int) env('HELIXIR_CACHE_TTL', 60),
     ],
 
     'collector' => [
