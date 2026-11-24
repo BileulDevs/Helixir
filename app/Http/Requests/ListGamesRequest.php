@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Rules\LanguageCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,6 +28,7 @@ class ListGamesRequest extends FormRequest
             'limit' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_LIMIT],
             'page' => ['sometimes', 'integer', 'min:1'],
             'sort' => ['sometimes', Rule::in(array_keys(self::SORTS))],
+            'language' => LanguageCode::rules(),
         ];
     }
 
@@ -38,5 +40,10 @@ class ListGamesRequest extends FormRequest
     public function sortColumn(): string
     {
         return self::SORTS[$this->string('sort', 'viewers')->toString()];
+    }
+
+    public function language(): ?string
+    {
+        return $this->validated('language');
     }
 }

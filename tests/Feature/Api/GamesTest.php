@@ -89,7 +89,7 @@ describe('GET /api/v1/games/{id}', function () {
                     'average_viewers' => 3,
                     'is_estimate' => false,
                 ],
-                'meta' => ['collected_at' => '2026-11-24T14:05:00Z'],
+                'meta' => ['language' => null, 'collected_at' => '2026-11-24T14:05:00Z'],
             ]);
     });
 

@@ -66,6 +66,7 @@ class GameSnapshot extends Model
     #[Scope]
     protected function collectedAt(Builder $query, string $collectedAt): void
     {
-        $query->where('collected_at', $collectedAt);
+        // Colonne qualifiée (game_snapshots.collected_at) pour rester sans ambiguïté en cas de jointure.
+        $query->where($query->qualifyColumn('collected_at'), $collectedAt);
     }
 }
