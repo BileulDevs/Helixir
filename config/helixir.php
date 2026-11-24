@@ -12,6 +12,11 @@ return [
         'rate_limit_reserve' => (int) env('TWITCH_RATE_LIMIT_RESERVE', 10),
     ],
 
+    'api' => [
+        // Requêtes autorisées par minute et par clé d'API.
+        'rate_limit_per_minute' => (int) env('HELIXIR_RATE_LIMIT', 60),
+    ],
+
     'collector' => [
         // Nombre de jeux suivis (lus dans GET /games/top).
         'games_limit' => (int) env('HELIXIR_GAMES_LIMIT', 100),
