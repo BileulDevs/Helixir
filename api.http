@@ -1,0 +1,48 @@
+### Requêtes d'exemple Helixir
+### Utilisable avec PhpStorm (intégré) ou VS Code (extension REST Client).
+### Remplace la clé ci-dessous par celle de : php artisan helixir:api-key:create "mon poste"
+
+@baseUrl = http://localhost:8000/api/v1
+@apiKey = hx_remplace_moi
+
+### État de l'API (public)
+GET {{baseUrl}}/health
+
+### Jeux du dernier cycle, triés par spectateurs
+GET {{baseUrl}}/games?limit=10
+Authorization: Bearer {{apiKey}}
+
+### Jeux triés par nombre de streams, page 2
+GET {{baseUrl}}/games?sort=streams&limit=5&page=2
+Authorization: Bearer {{apiKey}}
+
+### Jeux en français uniquement
+GET {{baseUrl}}/games?language=fr&limit=10
+Authorization: Bearer {{apiKey}}
+
+### Recherche par nom
+GET {{baseUrl}}/games/search?q=craft
+Authorization: Bearer {{apiKey}}
+
+### Statistiques d'un jeu (GTA V)
+GET {{baseUrl}}/games/32982
+Authorization: Bearer {{apiKey}}
+
+### Statistiques d'un jeu en français
+GET {{baseUrl}}/games/32982?language=fr
+Authorization: Bearer {{apiKey}}
+
+### Top 5 des streamers français d'un jeu
+GET {{baseUrl}}/games/32982/top-streamers?limit=5&language=fr
+Authorization: Bearer {{apiKey}}
+
+### Erreur 401 : sans clé
+GET {{baseUrl}}/games
+
+### Erreur 404 : jeu inconnu
+GET {{baseUrl}}/games/1
+Authorization: Bearer {{apiKey}}
+
+### Erreur 422 : paramètre invalide
+GET {{baseUrl}}/games?sort=name
+Authorization: Bearer {{apiKey}}

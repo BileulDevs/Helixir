@@ -1,58 +1,138 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Helixir
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API REST qui transforme les données en direct de Twitch en statistiques par jeu : nombre de streams, spectateurs, moyenne par stream, répartition par langue et top des streamers.
 
-## About Laravel
+L'API Twitch (Helix) ne donne pas le nombre de streams d'un jeu ni d'historique. Helixir les calcule en parcourant les streams de chaque jeu toutes les 5 minutes et conserve chaque mesure en base.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> Données fournies par l'API Twitch. Projet indépendant, non affilié à Twitch.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Architecture
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+Twitch Helix ──(toutes les 5 min)──> Collecteur ──> PostgreSQL ──> API /api/v1/...
+                                    (scheduler)                    (lit uniquement la base,
+                                                                    réponses en cache 60 s)
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+L'API ne contacte jamais Twitch pendant une requête : elle reste rapide et ne dépend pas des limites de débit de Twitch.
 
-## Contributing
+| Conteneur | Rôle |
+|---|---|
+| `app` | API Laravel sur le port 8000, applique les migrations au démarrage |
+| `scheduler` | Lance `helixir:collect` toutes les 5 minutes |
+| `db` | PostgreSQL 17 |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Démarrage
 
-## Code of Conduct
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan helixir:api-key:create "mon poste"
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+La dernière commande affiche une clé `hx_...` une seule fois : garde-la.
 
-## Security Vulnerabilities
+Sans clé Twitch, l'API fonctionne avec des données de démonstration (`SEED_DEMO_DATA=true` par défaut).
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Brancher Twitch
 
-## License
+1. Crée une application sur [dev.twitch.tv/console](https://dev.twitch.tv/console).
+2. Renseigne `TWITCH_CLIENT_ID` et `TWITCH_CLIENT_SECRET` dans `.env` (jamais commité).
+3. Lance une collecte : `docker compose exec app php artisan helixir:collect`. Le conteneur `scheduler` prend ensuite le relais toutes les 5 minutes.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Pour ne garder que les vraies données, mets `SEED_DEMO_DATA=false` et repars d'une base vide : `docker compose exec app php artisan migrate:fresh --force`.
+
+## Endpoints
+
+Toutes les routes sauf `/health` exigent `Authorization: Bearer <clé>`. Exemples prêts à l'emploi dans [`api.http`](api.http).
+
+| Méthode | Route | Description |
+|---|---|---|
+| GET | `/api/v1/health` | État de l'API et date du dernier snapshot (public) |
+| GET | `/api/v1/games` | Jeux du dernier cycle. Paramètres : `limit` (1-100), `page`, `sort` (`viewers`, `streams`), `language` |
+| GET | `/api/v1/games/search?q=` | Recherche par nom, insensible à la casse |
+| GET | `/api/v1/games/{id}` | Statistiques actuelles d'un jeu. Paramètre : `language` |
+| GET | `/api/v1/games/{id}/top-streamers` | Top des streams en direct. Paramètres : `limit` (5 ou 10), `language` (langues suivies) |
+
+```http
+GET /api/v1/games/32982/top-streamers?limit=5&language=fr
+Authorization: Bearer hx_...
+```
+
+```json
+{
+  "data": [
+    { "rank": 1, "login": "example", "display_name": "Example", "viewers": 12450,
+      "title": "...", "language": "fr", "started_at": "2026-11-24T13:02:11Z" }
+  ],
+  "meta": { "game_id": "32982", "language": "fr", "collected_at": "2026-11-24T14:05:00Z" }
+}
+```
+
+Chaque réponse renvoie `meta.collected_at`, la date du snapshot utilisé. Les erreurs ont toujours la même forme :
+
+```json
+{ "error": { "code": "validation_failed", "message": "...", "fields": { "limit": ["..."] } } }
+```
+
+| Code HTTP | `error.code` |
+|---|---|
+| 401 | `unauthenticated` |
+| 404 | `not_found` |
+| 422 | `validation_failed` |
+| 429 | `rate_limited` (avec l'en-tête `Retry-After`) |
+
+## Collecte
+
+À chaque cycle, le collecteur :
+
+1. récupère un token d'application Twitch (flux *client credentials*), gardé en cache jusqu'à son expiration ;
+2. lit les `HELIXIR_GAMES_LIMIT` premiers jeux de `GET /games/top` ;
+3. pour chaque jeu, parcourt `GET /streams?game_id=` page par page jusqu'à la disparition du curseur, dans la limite de `HELIXIR_MAX_PAGES` pages (au-delà, `is_estimate` vaut `true`) ;
+4. additionne streams et spectateurs, au total et par langue, et garde le top 10 global et le top 10 de chaque langue de `HELIXIR_TRACKED_LANGUAGES` ;
+5. enregistre tous les snapshots du cycle en une seule transaction.
+
+Un jeu en échec n'empêche pas les autres d'être collectés. Les erreurs 429 et 5xx sont réessayées trois fois avec un délai exponentiel, et le collecteur ralentit quand l'en-tête `Ratelimit-Remaining` de Twitch devient bas.
+
+## Configuration
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` | | Application Twitch |
+| `HELIXIR_GAMES_LIMIT` | 100 | Nombre de jeux suivis |
+| `HELIXIR_MAX_PAGES` | 10 | Pages de 100 streams lues au plus par jeu |
+| `HELIXIR_TRACKED_LANGUAGES` | `fr,en` | Langues avec un top streamers dédié |
+| `HELIXIR_RATE_LIMIT` | 60 | Requêtes par minute et par clé d'API |
+| `HELIXIR_CACHE_TTL` | 60 | Durée de cache des réponses, en secondes |
+| `SEED_DEMO_DATA` | `true` | Charge les données de démonstration au démarrage |
+
+## Clés d'API
+
+```bash
+docker compose exec app php artisan helixir:api-key:create "nom du client"
+docker compose exec app php artisan helixir:api-key:revoke <id>
+```
+
+Seule une empreinte SHA-256 de la clé est stockée en base.
+
+## Tests
+
+```bash
+php artisan test      # Pest, base SQLite en mémoire, Twitch simulé avec Http::fake()
+vendor/bin/pint       # style de code
+```
+
+## Choix techniques
+
+- **Laravel 13, PHP 8.4** : scheduler, client HTTP, cache, limitation de débit et validation fournis par le framework.
+- **Contrôleurs fins** : validation dans des Form Requests, lecture des statistiques dans `GameStatsQuery`, format JSON dans des API Resources.
+- **Un cycle, une transaction** : l'API ne sert jamais un cycle à moitié écrit, et un échec de collecte ne supprime jamais les dernières données valides.
+- **Cache indexé sur le cycle** : la date du snapshot fait partie de la clé de cache, donc un nouveau cycle invalide les anciennes réponses sans rien purger.
+
+## Feuille de route
+
+- Historique par jeu (24 h, 7 j, 30 j), jeux en tendance, score d'opportunité, comparaison de jeux
+- Redis pour le cache et files d'attente (un job par jeu) supervisées avec Horizon
+- Agrégats horaires et purge des snapshots bruts
+- Documentation OpenAPI générée, CI GitHub Actions
