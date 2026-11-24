@@ -1,11 +1,15 @@
 <?php
 
+use App\Jobs\CollectGameStats;
+use App\Models\CollectionRun;
 use App\Models\Game;
 use App\Models\GameLanguageStat;
 use App\Models\GameSnapshot;
 use App\Models\StreamSnapshot;
+use Illuminate\Bus\PendingBatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 
@@ -98,11 +102,55 @@ it('marks the count as an estimate when the page cap is reached', function () {
 it('keeps collecting other games when one fails', function () {
     fakeTwitch(['2' => fn () => Http::response([], 500)]);
 
+    $this->artisan('helixir:collect')->assertSuccessful();
+
+    expect(GameSnapshot::pluck('game_id')->all())->toBe(['1'])
+        ->and(CollectionRun::sole()->completed_at)->not->toBeNull();
+});
+
+it('queues one job per game in a single batch', function () {
+    Bus::fake();
+    fakeTwitch();
+
     $this->artisan('helixir:collect')
-        ->expectsOutputToContain('Failed games: 2')
+        ->expectsOutputToContain('2 games queued')
         ->assertSuccessful();
 
-    expect(GameSnapshot::pluck('game_id')->all())->toBe(['1']);
+    Bus::assertBatched(fn (PendingBatch $batch) => $batch->jobs->count() === 2
+        && $batch->jobs->every(fn ($job) => $job instanceof CollectGameStats));
+    expect(CollectionRun::sole())->games_count->toBe(2)->completed_at->toBeNull();
+});
+
+it('marks the cycle completed once every game job has run', function () {
+    fakeTwitch();
+
+    $this->artisan('helixir:collect')->assertSuccessful();
+
+    $run = CollectionRun::sole();
+    expect($run->completed_at)->not->toBeNull()
+        ->and(GameSnapshot::where('collected_at', $run->collected_at)->count())->toBe(2);
+});
+
+it('does not start a cycle while the previous one is still running', function () {
+    CollectionRun::create(['collected_at' => now()->subMinutes(2), 'games_count' => 100]);
+    fakeTwitch();
+
+    $this->artisan('helixir:collect')
+        ->expectsOutputToContain('still running')
+        ->assertSuccessful();
+
+    expect(CollectionRun::count())->toBe(1);
+    Http::assertNothingSent();
+});
+
+it('starts a new cycle when the running one is abandoned', function () {
+    CollectionRun::create(['collected_at' => now()->subMinutes(30), 'games_count' => 100]);
+    CollectionRun::query()->update(['created_at' => now()->subMinutes(30)]);
+    fakeTwitch();
+
+    $this->artisan('helixir:collect')->assertSuccessful();
+
+    expect(CollectionRun::count())->toBe(2);
 });
 
 it('refreshes the token once when Twitch answers 401', function () {

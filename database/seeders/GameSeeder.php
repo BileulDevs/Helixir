@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\CollectionRun;
 use App\Models\Game;
 use App\Models\GameLanguageStat;
 use App\Models\GameSnapshot;
@@ -57,6 +58,12 @@ class GameSeeder extends Seeder
             foreach (self::GAMES as [$id, , $streams, $viewers]) {
                 $this->seedSnapshot($id, $collectedAt, (int) round($streams * $drift), (int) round($viewers * $drift));
             }
+
+            CollectionRun::create([
+                'collected_at' => $collectedAt,
+                'games_count' => count(self::GAMES),
+                'completed_at' => $collectedAt,
+            ]);
         }
     }
 

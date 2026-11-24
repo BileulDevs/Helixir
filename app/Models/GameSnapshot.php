@@ -56,10 +56,10 @@ class GameSnapshot extends Model
             : 0;
     }
 
-    /** Date du dernier cycle de collecte, ou null si la base est vide. */
+    /** Date du dernier cycle de collecte terminé, ou null si aucun ne l'est. */
     public static function latestCollectedAt(): ?string
     {
-        return static::query()->max('collected_at');
+        return CollectionRun::latestCompletedAt();
     }
 
     /** Restreint la requête aux snapshots d'un cycle donné. */

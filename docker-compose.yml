@@ -12,6 +12,10 @@ x-app: &app
     DB_DATABASE: ${DB_DATABASE:-helixir}
     DB_USERNAME: ${DB_USERNAME:-helixir}
     DB_PASSWORD: ${DB_PASSWORD:-helixir}
+    # File de jobs en base ; un job est rendu à la file s'il n'a pas répondu en 360 s
+    # (doit rester supérieur au timeout du worker).
+    QUEUE_CONNECTION: database
+    DB_QUEUE_RETRY_AFTER: 360
 
 services:
   app:
@@ -31,10 +35,20 @@ services:
       timeout: 3s
       retries: 30
 
-  # Lance le collecteur Twitch toutes les 5 minutes (routes/console.php).
+  # Lance un cycle de collecte toutes les 5 minutes (routes/console.php).
   scheduler:
     <<: *app
     command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Collectent les jeux en parallèle : un job par jeu, QUEUE_WORKERS workers.
+  worker:
+    <<: *app
+    command: ["php", "artisan", "queue:work", "--sleep=1", "--tries=1", "--timeout=300"]
+    deploy:
+      replicas: ${QUEUE_WORKERS:-4}
     depends_on:
       app:
         condition: service_healthy

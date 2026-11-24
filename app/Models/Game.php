@@ -26,9 +26,15 @@ class Game extends Model
         return $this->hasMany(GameSnapshot::class);
     }
 
-    /** Le snapshot le plus récent du jeu. */
+    /** Le snapshot le plus récent du jeu, parmi les cycles de collecte terminés. */
     public function latestSnapshot(): HasOne
     {
-        return $this->hasOne(GameSnapshot::class)->latestOfMany('collected_at');
+        return $this->hasOne(GameSnapshot::class)->ofMany(
+            ['collected_at' => 'max'],
+            fn ($query) => $query->whereIn(
+                'game_snapshots.collected_at',
+                CollectionRun::query()->completed()->select('collected_at'),
+            ),
+        );
     }
 }

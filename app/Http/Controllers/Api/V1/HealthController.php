@@ -12,7 +12,11 @@ class HealthController extends Controller
     /** Au-delà de ce délai sans collecte, les données sont jugées périmées. */
     private const STALE_AFTER_MINUTES = 10;
 
-    /** GET /api/v1/health : état de l'API et fraîcheur des données. */
+    /**
+     * État de l'API.
+     *
+     * Public, sans clé. `status` vaut `stale` si aucun snapshot n'a été collecté depuis 10 minutes.
+     */
     public function __invoke(): JsonResponse
     {
         $latest = GameSnapshot::latestCollectedAt();
