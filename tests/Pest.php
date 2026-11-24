@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ApiKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,6 +18,12 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
  // ->use(RefreshDatabase::class)
     ->in('Feature');
+
+// Les tests d'endpoints s'authentifient avec une clé d'API valide par défaut.
+pest()->beforeEach(function () {
+    [, $plainKey] = ApiKey::generate('tests');
+    $this->withToken($plainKey);
+})->in('Feature/Api');
 
 /*
 |--------------------------------------------------------------------------

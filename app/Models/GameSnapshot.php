@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GameSnapshot extends Model
 {
@@ -35,6 +36,18 @@ class GameSnapshot extends Model
         return $this->belongsTo(Game::class);
     }
 
+    /** @return HasMany<GameLanguageStat, $this> */
+    public function languageStats(): HasMany
+    {
+        return $this->hasMany(GameLanguageStat::class);
+    }
+
+    /** @return HasMany<StreamSnapshot, $this> */
+    public function streams(): HasMany
+    {
+        return $this->hasMany(StreamSnapshot::class);
+    }
+
     /** Moyenne de spectateurs par stream, arrondie (0 si aucun stream). */
     public function averageViewers(): int
     {
@@ -53,6 +66,7 @@ class GameSnapshot extends Model
     #[Scope]
     protected function collectedAt(Builder $query, string $collectedAt): void
     {
-        $query->where('collected_at', $collectedAt);
+        // Colonne qualifiée (game_snapshots.collected_at) pour rester sans ambiguïté en cas de jointure.
+        $query->where($query->qualifyColumn('collected_at'), $collectedAt);
     }
 }

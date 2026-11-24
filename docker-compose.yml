@@ -1,22 +1,42 @@
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+  volumes:
+    - .:/var/www/html
+  environment: &app-env
+    # Les variables d'environnement réelles priment sur le fichier .env.
+    DB_CONNECTION: pgsql
+    DB_HOST: db
+    DB_PORT: 5432
+    DB_DATABASE: ${DB_DATABASE:-helixir}
+    DB_USERNAME: ${DB_USERNAME:-helixir}
+    DB_PASSWORD: ${DB_PASSWORD:-helixir}
+
 services:
   app:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
+    <<: *app
     ports:
       - "8000:8000"
-    volumes:
-      - .:/var/www/html
     environment:
-      # Les variables d'environnement réelles priment sur le fichier .env.
-      DB_CONNECTION: pgsql
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_DATABASE: ${DB_DATABASE:-helixir}
-      DB_USERNAME: ${DB_USERNAME:-helixir}
-      DB_PASSWORD: ${DB_PASSWORD:-helixir}
+      <<: *app-env
+      RUN_MIGRATIONS: "true"
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
     depends_on:
       db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://localhost:8000/up') === false ? 1 : 0);"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Lance le collecteur Twitch toutes les 5 minutes (routes/console.php).
+  scheduler:
+    <<: *app
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      app:
         condition: service_healthy
 
   db:
