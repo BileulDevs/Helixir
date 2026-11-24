@@ -20,9 +20,16 @@ class GameStatsResource extends JsonResource
             'id' => $this->game->id,
             'name' => $this->game->name,
             'box_art_url' => $this->game->box_art_url,
+            /** Nombre de streams en direct, tous comptés un par un. */
             'streams' => $this->streams_count,
+            /**
+             * Somme des compteurs de spectateurs publics de chaque stream (API Twitch Helix).
+             * Environ 10 % sous le total affiché sur le site Twitch, calculé autrement par Twitch.
+             */
             'viewers' => $this->viewers_count,
+            /** Spectateurs par stream, arrondi. */
             'average_viewers' => $this->averageViewers(),
+            /** `true` si la lecture des streams n'a pas pu être complète (garde-fou atteint). */
             'is_estimate' => $this->is_estimate,
         ];
     }

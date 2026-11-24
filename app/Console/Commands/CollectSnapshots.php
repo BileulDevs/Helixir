@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Throwable;
 
 #[Signature('helixir:collect')]
-#[Description('Collect a snapshot of live Twitch stats for the top games')]
+#[Description('Start a collection cycle: one queued job per top Twitch game')]
 class CollectSnapshots extends Command
 {
     public function handle(): int
@@ -23,12 +23,16 @@ class CollectSnapshots extends Command
             return self::FAILURE;
         }
 
-        $this->info("Snapshot {$result->collectedAt->toIso8601ZuluString()}: {$result->collectedGames} games collected.");
+        $cycle = $result->collectedAt->toIso8601ZuluString();
 
-        if ($result->failedGameIds !== []) {
-            $this->warn('Failed games: '.implode(', ', $result->failedGameIds));
+        if ($result->skipped) {
+            $this->warn("Cycle {$cycle} is still running: no new cycle started.");
+
+            return self::SUCCESS;
         }
 
-        return $result->succeeded() ? self::SUCCESS : self::FAILURE;
+        $this->info("Cycle {$cycle}: {$result->dispatchedGames} games queued for collection.");
+
+        return self::SUCCESS;
     }
 }

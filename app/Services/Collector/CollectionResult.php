@@ -4,18 +4,23 @@ namespace App\Services\Collector;
 
 use Illuminate\Support\Carbon;
 
-/** Bilan d'un cycle de collecte. */
+/** Bilan du lancement d'un cycle de collecte. */
 final readonly class CollectionResult
 {
-    /** @param list<string> $failedGameIds */
-    public function __construct(
+    private function __construct(
         public Carbon $collectedAt,
-        public int $collectedGames,
-        public array $failedGameIds,
+        public int $dispatchedGames,
+        public bool $skipped,
     ) {}
 
-    public function succeeded(): bool
+    public static function dispatched(Carbon $collectedAt, int $games): self
     {
-        return $this->collectedGames > 0;
+        return new self($collectedAt, $games, false);
+    }
+
+    /** Un cycle précédent tourne encore : on n'en lance pas un deuxième. */
+    public static function skipped(Carbon $runningCollectedAt): self
+    {
+        return new self($runningCollectedAt, 0, true);
     }
 }
